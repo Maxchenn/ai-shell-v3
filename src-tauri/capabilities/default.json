@@ -1,13 +1,21 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "toolbar-capability",
-  "description": "Privileged local toolbar webview only",
-  "webviews": ["toolbar"],
+  "identifier": "app-capability",
+  "description": "Permissions for the main toolbar and settings window",
+  "webviews": [
+    "toolbar",
+    "settings"
+  ],
   "permissions": [
     "core:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-minimize",
+    "core:window:allow-close",
+
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister",
     "global-shortcut:allow-unregister-all",
+
     "autostart:allow-enable",
     "autostart:allow-disable",
     "autostart:allow-is-enabled"
