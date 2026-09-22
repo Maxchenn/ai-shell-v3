@@ -1,3 +1,24 @@
-fn main() {
-  tauri_build::build()
-}
+[package]
+name = "ai-shell"
+version = "0.1.0"
+description = "A lightweight multi-site AI desktop shell"
+authors = ["AI Shell"]
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "ai_shell_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2" }
+
+[dependencies]
+tauri = { version = "2.11.6", features = ["unstable", "tray-icon", "image-png"] }
+tauri-plugin-autostart = "2.5.1"
+tauri-plugin-global-shortcut = "2.3.2"
+tauri-plugin-single-instance = "2.4.5"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+url = "2"
+anyhow = "1"
