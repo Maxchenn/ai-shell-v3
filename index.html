@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Shell</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar" data-tauri-drag-region>
+        <div class="brand" data-tauri-drag-region>
+          <span class="brand-mark" aria-hidden="true">✦</span>
+          <span>AI Shell</span>
+        </div>
+
+        <label class="site-picker" title="切换 AI 网站">
+          <select id="siteSelect" aria-label="AI 网站"></select>
+        </label>
+
+        <div class="window-actions">
+          <button class="icon-button" id="pinButton" title="置顶" aria-label="置顶">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3l7 7-2.1 2.1-2-2-3.6 3.6 3 3-1.6 1.6-3-3L8 20l-2-2 4.7-4.7-3-3L9 8.7l3 3 3.6-3.6-2-2L14 3z"/></svg>
+          </button>
+          <button class="icon-button" id="settingsButton" title="设置" aria-label="设置">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.8 7.8 0 0 0 0-2l2-1.6-2-3.4-2.4 1a8 8 0 0 0-1.7-1L15 3h-4l-.4 3a8 8 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7.8 7.8 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a8 8 0 0 0 1.7 1l.4 3h4l.4-3a8 8 0 0 0 1.7-1l2.4 1 2-3.4-2.2-1.6zM13 15.6A3.6 3.6 0 1 1 13 8a3.6 3.6 0 0 1 0 7.6z"/></svg>
+          </button>
+          <button class="icon-button" id="hideButton" title="隐藏到托盘" aria-label="隐藏到托盘">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11h14v2H5z"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <section class="settings" id="settingsPanel" aria-hidden="true">
+        <div class="settings-grid">
+          <div class="settings-section">
+            <div class="section-title">网站</div>
+            <div id="siteList" class="site-list"></div>
+            <div class="add-site-row">
+              <input id="newSiteName" type="text" placeholder="名称" maxlength="30" />
+              <input id="newSiteUrl" type="text" placeholder="https://example.com" />
+              <button class="small-button" id="addSiteButton">添加</button>
+            </div>
+          </div>
+
+          <div class="settings-section compact">
+            <div class="setting-row">
+              <div>
+                <div class="setting-label">呼出快捷键</div>
+                <div class="setting-hint">例如 Alt+Space / Ctrl+Alt+Space</div>
+              </div>
+              <input class="shortcut-input" id="shortcutInput" type="text" maxlength="40" />
+            </div>
+            <div class="setting-row">
+              <div>
+                <div class="setting-label">开机启动</div>
+                <div class="setting-hint">开机后在后台驻留，不主动弹窗</div>
+              </div>
+              <input id="autostartToggle" type="checkbox" class="switch" />
+            </div>
+            <div class="setting-row hint-row">
+              <div>
+                <div class="setting-label">全屏</div>
+                <div class="setting-hint"><kbd>F</kbd> 切换全屏；输入文字时不会误触发。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="settingsMessage" class="settings-message" role="status"></div>
+      </section>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
