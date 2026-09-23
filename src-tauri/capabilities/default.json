@@ -1,15 +1,16 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "app-capability",
-  "description": "Permissions for the main toolbar and settings window",
+  "description": "Permissions for the main toolbar webview and desktop window controls",
   "webviews": [
-    "toolbar",
-    "settings"
+    "toolbar"
   ],
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",
+    "core:window:allow-start-resize-dragging",
     "core:window:allow-minimize",
+    "core:window:allow-unminimize",
     "core:window:allow-close",
 
     "global-shortcut:allow-register",
