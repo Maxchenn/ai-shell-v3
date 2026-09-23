@@ -661,7 +661,8 @@ fn set_shortcut(
 
     let old_shortcut = {
         let st = state(&app)?;
-        st.settings.lock().unwrap().shortcut.clone()
+        let shortcut = st.settings.lock().unwrap().shortcut.clone();
+        shortcut
     };
 
     if old_shortcut.eq_ignore_ascii_case(&shortcut) {
