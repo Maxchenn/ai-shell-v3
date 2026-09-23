@@ -18,7 +18,7 @@ use tauri::{
         DownloadEvent, NewWindowResponse, WebviewBuilder, WebviewWindowBuilder,
     },
     window::WindowBuilder,
-    AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, Window, WindowEvent,
+    AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, Window, WindowEvent,
 };
 use tauri_plugin_autostart::ManagerExt as _;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
@@ -46,6 +46,12 @@ struct Site {
     name: String,
     url: String,
     builtin: bool,
+}
+
+#[derive(Clone, Debug, Serialize)]
+struct DownloadNotice {
+    name: String,
+    success: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -252,22 +258,25 @@ fn schedule_save_window_geometry(app: &AppHandle) {
 
 fn layout_webviews(window: &Window, toolbar_height: u32) -> tauri::Result<()> {
     let size = window.inner_size()?;
+    let actual_toolbar_height = if toolbar_height > TOOLBAR_HEIGHT {
+        size.height
+    } else {
+        toolbar_height.min(size.height)
+    };
 
     if let Some(webview) = window.get_webview(TOOLBAR_LABEL) {
         webview.set_position(PhysicalPosition::new(0, 0))?;
         webview.set_size(PhysicalSize::new(
             size.width,
-            toolbar_height.min(size.height),
+            actual_toolbar_height,
         ))?;
     }
 
     if let Some(webview) = window.get_webview(REMOTE_LABEL) {
-        let y = toolbar_height.min(size.height);
-
-        webview.set_position(PhysicalPosition::new(0, y))?;
+        webview.set_position(PhysicalPosition::new(0, actual_toolbar_height))?;
         webview.set_size(PhysicalSize::new(
             size.width,
-            size.height.saturating_sub(y),
+            size.height.saturating_sub(actual_toolbar_height),
         ))?;
     }
 
@@ -421,6 +430,43 @@ fn choose_download_destination(
     *destination = unique_download_path(&download_dir, &filename);
 }
 
+
+fn download_display_name(url: &Url, path: Option<&Path>) -> String {
+    path
+        .and_then(|p| p.file_name())
+        .and_then(|name| name.to_str())
+        .map(ToOwned::to_owned)
+        .filter(|name| !name.is_empty())
+        .or_else(|| {
+            url.path_segments()
+                .and_then(|segments| segments.last())
+                .map(sanitize_filename)
+                .filter(|name| !name.is_empty())
+        })
+        .unwrap_or_else(|| "download".into())
+}
+
+fn emit_download_started(app: &AppHandle, url: &Url, destination: &Path) {
+    let payload = DownloadNotice {
+        name: download_display_name(url, Some(destination)),
+        success: true,
+    };
+    let _ = app.emit("download-started", payload);
+}
+
+fn emit_download_finished(
+    app: &AppHandle,
+    url: &Url,
+    path: Option<&Path>,
+    success: bool,
+) {
+    let payload = DownloadNotice {
+        name: download_display_name(url, path),
+        success,
+    };
+    let _ = app.emit("download-finished", payload);
+}
+
 const REMOTE_INIT: &str = r#"
 (() => {
   window.addEventListener('keydown', (e) => {
@@ -447,6 +493,23 @@ const REMOTE_INIT: &str = r#"
   }, true);
 })();
 "#;
+
+fn popup_geometry(app: &AppHandle) -> Option<(f64, f64, f64, f64)> {
+    let main = app.get_window(WINDOW_LABEL)?;
+    let monitor = main.current_monitor().ok().flatten()?;
+    let scale = monitor.scale_factor().max(0.1);
+    let work = monitor.work_area();
+
+    let work_width = work.size.width as f64 / scale;
+    let work_height = work.size.height as f64 / scale;
+    let work_x = work.position.x as f64 / scale;
+    let work_y = work.position.y as f64 / scale;
+
+    let width = work_width.min(960.0).max(760.0);
+    let x = work_x + (work_width - width) / 2.0;
+
+    Some((x, work_y, width, work_height))
+}
 
 fn build_main_window(
     app: &tauri::AppHandle,
@@ -501,8 +564,15 @@ fn build_main_window(
     )
     .initialization_script(REMOTE_INIT)
     .on_download(move |_webview, event| {
-        if let DownloadEvent::Requested { url, destination } = event {
-            choose_download_destination(&download_app, &url, destination);
+        match event {
+            DownloadEvent::Requested { url, destination } => {
+                choose_download_destination(&download_app, &url, destination);
+                emit_download_started(&download_app, &url, destination);
+            }
+            DownloadEvent::Finished { url, path, success } => {
+                emit_download_finished(&download_app, &url, path.as_deref(), success);
+            }
+            _ => {}
         }
 
         true
@@ -514,21 +584,47 @@ fn build_main_window(
         );
 
         let popup_download_app = popup_app.clone();
-
-        let builder = WebviewWindowBuilder::new(
+        let mut builder = WebviewWindowBuilder::new(
             &popup_app,
             label,
             WebviewUrl::External(url.clone()),
         )
         .window_features(features)
-        .title(url.as_str())
-        .on_download(move |_webview, event| {
-            if let DownloadEvent::Requested { url, destination } = event {
-                choose_download_destination(
-                    &popup_download_app,
-                    &url,
-                    destination,
-                );
+        .title(url.as_str());
+
+        if let Some((x, y, width, height)) = popup_geometry(&popup_app) {
+            builder = builder
+                .inner_size(width, height)
+                .position(x, y);
+        } else {
+            builder = builder
+                .inner_size(960.0, 760.0)
+                .center();
+        }
+
+        let builder = builder.on_download(move |_webview, event| {
+            match event {
+                DownloadEvent::Requested { url, destination } => {
+                    choose_download_destination(
+                        &popup_download_app,
+                        &url,
+                        destination,
+                    );
+                    emit_download_started(
+                        &popup_download_app,
+                        &url,
+                        destination,
+                    );
+                }
+                DownloadEvent::Finished { url, path, success } => {
+                    emit_download_finished(
+                        &popup_download_app,
+                        &url,
+                        path.as_deref(),
+                        success,
+                    );
+                }
+                _ => {}
             }
 
             true
@@ -879,6 +975,29 @@ fn set_toolbar_height(
 }
 
 #[tauri::command]
+fn set_settings_mode(
+    app: AppHandle,
+    open: bool,
+) -> tauri::Result<()> {
+    let window = app
+        .get_window(WINDOW_LABEL)
+        .ok_or_else(|| tauri::Error::Anyhow(anyhow::anyhow!("找不到主窗口")))?;
+
+    let height = if open {
+        window.inner_size()?.height
+    } else {
+        TOOLBAR_HEIGHT
+    };
+
+    {
+        let st = state(&app)?;
+        *st.toolbar_height.lock().unwrap() = height;
+    }
+
+    layout_webviews(&window, height)
+}
+
+#[tauri::command]
 fn hide_window(app: AppHandle) -> tauri::Result<()> {
     save_window_geometry(&app)?;
 
@@ -950,6 +1069,7 @@ pub fn run() {
             update_site,
             remove_site,
             set_toolbar_height,
+            set_settings_mode,
             hide_window,
             toggle_visibility,
             minimize_window,

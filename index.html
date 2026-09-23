@@ -8,11 +8,8 @@
 
   <body>
     <div id="app">
-
-      <!-- 主窗口顶部栏 -->
       <main id="mainView" class="main-view">
         <header class="topbar">
-
           <div class="site-picker">
             <div class="site-current-icon-wrap">
               <img
@@ -23,16 +20,13 @@
               />
               <span id="siteIconFallback" class="site-icon-fallback">AI</span>
             </div>
-
             <select id="siteSelect" aria-label="切换 AI 网站"></select>
-
             <span class="select-chevron" aria-hidden="true">⌄</span>
           </div>
 
-          <!-- 空白区域用于拖动窗口 -->
           <div
+            id="dragZone"
             class="drag-zone"
-            data-tauri-drag-region
             aria-hidden="true"
           ></div>
 
@@ -57,7 +51,7 @@
               type="button"
             >
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M19.4 13a7.8 7.8 0 0 0 0-2l2-1.6-2-3.4-2.4 1a8 8 0 0 0-1.7-1L15 3h-4l-.4 3a8 8 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7.8 7.8 0 0 0 0 2l-2.2 1.6 2 3.4 2.4-1a8 8 0 0 0 1.7 1l.4 3h4l.4-3a8 8 0 0 0 1.7-1l2.4 1 2 3.4-2.2-1.6zM13 15.6A3.6 3.6 0 1 1 13 8a3.6 3.6 0 0 1 0 7.6z"/>
+                <path d="M19.4 13a7.8 7.8 0 0 0 0-2l2-1.6-2-3.4-2.4 1a8 8 0 0 0-1.7-1L15 3h-4l-.4 3a8 8 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7.8 7.8 0 0 0 0 2l-2.2 1.6 2 3.4 2.4-1a8 8 0 0 0 1.7 1l.4 3h4l.4-3a8 8 0 0 0 1.7-1l2.4 1 2.4-1.6zM13 15.6A3.6 3.6 0 1 1 13 8a3.6 3.6 0 0 1 0 7.6z"/>
               </svg>
             </button>
 
@@ -86,139 +80,78 @@
             </button>
           </div>
         </header>
+
+        <section
+          id="settingsPanel"
+          class="settings"
+          aria-hidden="true"
+        >
+          <div class="settings-grid">
+            <section class="settings-section">
+              <div class="section-title">AI 网站</div>
+              <div id="siteList" class="site-list"></div>
+
+              <div class="add-site-row">
+                <input
+                  id="newSiteName"
+                  type="text"
+                  maxlength="40"
+                  placeholder="网站名称"
+                />
+                <input
+                  id="newSiteUrl"
+                  type="text"
+                  placeholder="https://example.com"
+                />
+                <button
+                  id="addSiteButton"
+                  class="small-button"
+                  type="button"
+                >
+                  添加
+                </button>
+              </div>
+            </section>
+
+            <section class="settings-section compact">
+              <div class="section-title">快捷键</div>
+
+              <div class="setting-row">
+                <div>
+                  <div class="setting-label">呼出 / 隐藏 AI Shell</div>
+                  <div class="setting-hint">点击输入框后直接按组合键。</div>
+                </div>
+                <input
+                  id="shortcutInput"
+                  class="shortcut-input"
+                  type="text"
+                  readonly
+                  value=""
+                  aria-label="全局快捷键"
+                />
+              </div>
+
+              <div class="section-title">启动</div>
+
+              <div class="setting-row">
+                <div>
+                  <div class="setting-label">开机启动</div>
+                  <div class="setting-hint">启动后后台运行，不主动弹出窗口。</div>
+                </div>
+                <input
+                  id="autostartToggle"
+                  class="switch"
+                  type="checkbox"
+                />
+              </div>
+
+              <div id="settingsMessage" class="settings-message" role="status"></div>
+            </section>
+          </div>
+        </section>
       </main>
 
-
-      <!-- 独立设置窗口使用的页面 -->
-      <main id="settingsView" class="settings-page hidden">
-        <div class="settings-shell">
-
-          <header class="settings-header">
-            <div>
-              <div class="settings-kicker">AI SHELL</div>
-              <h1>设置</h1>
-              <p>管理 AI 网站、快捷键和启动行为。</p>
-            </div>
-
-            <button
-              id="settingsCloseButton"
-              class="settings-close-button"
-              type="button"
-              aria-label="关闭设置"
-            >
-              ×
-            </button>
-          </header>
-
-
-          <section class="settings-section">
-            <div class="section-heading">
-              <div>
-                <h2>AI 网站</h2>
-                <p>名称和网址都可以自由修改，图标会根据网站地址自动获取。</p>
-              </div>
-            </div>
-
-            <div id="siteSettingsList" class="site-settings-list"></div>
-
-
-            <div class="add-site-card">
-              <div class="add-site-title">添加新的 AI</div>
-
-              <div class="field-grid">
-                <label class="field">
-                  <span>名称</span>
-                  <input
-                    id="newSiteName"
-                    type="text"
-                    maxlength="40"
-                    placeholder="例如 Perplexity"
-                  />
-                </label>
-
-                <label class="field">
-                  <span>网址</span>
-                  <input
-                    id="newSiteUrl"
-                    type="text"
-                    placeholder="https://example.com"
-                  />
-                </label>
-              </div>
-
-              <button id="addSiteButton" class="primary-button" type="button">
-                添加 AI
-              </button>
-            </div>
-          </section>
-
-
-          <section class="settings-section">
-            <div class="section-heading">
-              <div>
-                <h2>快捷键</h2>
-                <p>点击下面的区域，然后直接按键盘组合键，不需要手动输入字符。</p>
-              </div>
-            </div>
-
-            <div class="setting-card">
-              <div class="setting-card-copy">
-                <div class="setting-title">呼出 AI Shell</div>
-                <div class="setting-description">
-                  支持 Ctrl / Alt / Shift / Win 等组合键。
-                </div>
-              </div>
-
-              <button
-                id="shortcutRecorder"
-                class="shortcut-recorder"
-                type="button"
-              >
-                未设置
-              </button>
-            </div>
-          </section>
-
-
-          <section class="settings-section">
-            <div class="section-heading">
-              <div>
-                <h2>启动行为</h2>
-                <p>控制程序开机后的行为。</p>
-              </div>
-            </div>
-
-            <div class="setting-card">
-              <div class="setting-card-copy">
-                <div class="setting-title">开机启动</div>
-                <div class="setting-description">
-                  Windows 启动后后台运行，不主动弹出窗口。
-                </div>
-              </div>
-
-              <label class="switch">
-                <input id="autostartToggle" type="checkbox" />
-                <span class="switch-track"></span>
-              </label>
-            </div>
-          </section>
-
-
-          <section class="settings-section">
-            <div class="settings-note">
-              <div class="note-title">窗口</div>
-              <div class="note-text">
-                主窗口顶部空白区域可以直接拖动窗口；右上角的 × 会隐藏到系统托盘，而不是退出程序。
-              </div>
-            </div>
-          </section>
-
-
-          <div id="settingsMessage" class="settings-message" role="status"></div>
-
-        </div>
-      </main>
-
+      <div id="downloadToast" class="download-toast" role="status" aria-live="polite"></div>
     </div>
 
     <script type="module" src="/src/main.js"></script>

@@ -39,6 +39,12 @@ button {
   color: inherit;
 }
 
+.main-view {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
 #app {
   width: 100%;
   height: 100%;
@@ -80,6 +86,39 @@ button {
   font-size: 12px;
 }
 
+.site-picker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  z-index: 2;
+}
+
+.site-current-icon-wrap {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(255,255,255,.055);
+}
+
+.site-current-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.site-icon-fallback {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
 .site-picker select {
   appearance: none;
   width: 100%;
@@ -92,6 +131,26 @@ button {
   background-color: rgba(255,255,255,.055);
   outline: none;
   cursor: pointer;
+}
+
+.select-chevron {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-55%);
+  pointer-events: none;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.drag-zone {
+  min-width: 0;
+  height: 100%;
+  cursor: move;
+}
+
+.drag-zone:active {
+  cursor: grabbing;
 }
 
 .site-picker select:hover {
@@ -341,6 +400,34 @@ kbd {
 .resize-top-right {
   right: 0;
   cursor: nesw-resize;
+}
+
+.download-toast {
+  position: fixed;
+  left: 50%;
+  top: 10px;
+  z-index: 10000;
+  transform: translate(-50%, -10px);
+  max-width: min(420px, calc(100% - 28px));
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(20,20,23,.94);
+  box-shadow: 0 8px 24px rgba(0,0,0,.24);
+  color: var(--text);
+  font-size: 11px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .16s ease, transform .16s ease;
+}
+
+.download-toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.download-toast.error {
+  color: rgba(255,205,205,.95);
 }
 
 @media (prefers-color-scheme: light) {

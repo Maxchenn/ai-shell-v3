@@ -2,13 +2,17 @@ import './style.css';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { enable, disable, isEnabled } from '@tauri-apps/plugin-autostart';
+import { listen } from '@tauri-apps/api/event';
 
 const $ = (id) => document.getElementById(id);
 
 const siteSelect = $('siteSelect');
 const pinButton = $('pinButton');
 const settingsButton = $('settingsButton');
-const hideButton = $('hideButton');
+const minimizeButton = $('minimizeButton');
+const closeButton = $('closeButton');
+const dragZone = $('dragZone');
+const downloadToast = $('downloadToast');
 const settingsPanel = $('settingsPanel');
 const siteList = $('siteList');
 const shortcutInput = $('shortcutInput');
@@ -61,14 +65,58 @@ const setSettingsPanel = async (open) => {
   settingsPanel.classList.toggle('open', open);
   settingsPanel.setAttribute('aria-hidden', String(!open));
 
-  await invoke('set_toolbar_height', {
-    height: open ? 310 : 56,
-  });
+  await invoke('set_settings_mode', { open });
 
   if (open) {
     await refreshAutostart();
     shortcutInput.focus();
   }
+};
+
+const getFaviconCandidates = (site) => {
+  try {
+    const url = new URL(site.url);
+    return [
+      `${url.origin}/favicon.ico`,
+      `${url.origin}/favicon.svg`,
+      `${url.origin}/favicon.png`,
+    ];
+  } catch {
+    return [];
+  }
+};
+
+const setFavicon = (site) => {
+  const image = $('siteIcon');
+  const fallback = $('siteIconFallback');
+  const candidates = getFaviconCandidates(site);
+  let index = 0;
+
+  const fallbackToText = () => {
+    image.hidden = true;
+    fallback.hidden = false;
+    const name = site.name?.trim() || 'AI';
+    fallback.textContent = name.length > 1 ? name.slice(0, 1).toUpperCase() : name;
+  };
+
+  const tryNext = () => {
+    if (index >= candidates.length) {
+      fallbackToText();
+      return;
+    }
+
+    image.onload = () => {
+      image.hidden = false;
+      fallback.hidden = true;
+    };
+    image.onerror = () => {
+      index += 1;
+      tryNext();
+    };
+    image.src = candidates[index++];
+  };
+
+  tryNext();
 };
 
 const renderSites = () => {
@@ -81,6 +129,9 @@ const renderSites = () => {
     option.selected = site.id === settings.selected_site_id;
     siteSelect.appendChild(option);
   }
+
+  const current = settings.sites.find((site) => site.id === settings.selected_site_id) || settings.sites[0];
+  if (current) setFavicon(current);
 
   siteList.innerHTML = '';
 
@@ -290,11 +341,30 @@ settingsButton.addEventListener('click', async () => {
   await setSettingsPanel(!settingsOpen);
 });
 
-hideButton.addEventListener('click', async () => {
+minimizeButton.addEventListener('click', async () => {
+  try {
+    await invoke('minimize_window');
+  } catch (error) {
+    showMessage(String(error), true);
+  }
+});
+
+closeButton.addEventListener('click', async () => {
   try {
     await invoke('hide_window');
   } catch (error) {
     showMessage(String(error), true);
+  }
+});
+
+dragZone.addEventListener('mousedown', async (event) => {
+  if (event.button !== 0) return;
+
+  event.preventDefault();
+  try {
+    await currentWindow.startDragging();
+  } catch (error) {
+    console.error(error);
   }
 });
 
@@ -377,6 +447,28 @@ window.addEventListener('keydown', async (event) => {
   } catch (error) {
     console.error(error);
   }
+});
+
+let toastTimer = null;
+const showDownloadToast = (text, isError = false) => {
+  downloadToast.textContent = text;
+  downloadToast.classList.toggle('error', isError);
+  downloadToast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    downloadToast.classList.remove('show');
+  }, 2200);
+};
+
+await listen('download-started', (event) => {
+  showDownloadToast(`正在下载：${event.payload.name}`);
+});
+
+await listen('download-finished', (event) => {
+  const message = event.payload.success
+    ? `下载完成：${event.payload.name}`
+    : `下载失败：${event.payload.name}`;
+  showDownloadToast(message, !event.payload.success);
 });
 
 const createResizeHandle = (className, direction) => {
