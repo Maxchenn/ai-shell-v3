@@ -562,6 +562,7 @@ fn build_main_window(
         REMOTE_LABEL,
         WebviewUrl::External(remote_url),
     )
+    .disable_drag_drop_handler()
     .initialization_script(REMOTE_INIT)
     .on_download(move |_webview, event| {
         match event {
@@ -868,15 +869,15 @@ fn remove_site(
         let st = state(&app)?;
         let mut settings = st.settings.lock().unwrap();
 
-        if settings
-            .sites
-            .iter()
-            .find(|site| site.id == id)
-            .map(|site| site.builtin)
-            .unwrap_or(true)
-        {
+        if settings.sites.len() <= 1 {
             return Err(tauri::Error::Anyhow(anyhow::anyhow!(
-                "内置网站不能删除"
+                "至少保留一个 AI 网站"
+            )));
+        }
+
+        if !settings.sites.iter().any(|site| site.id == id) {
+            return Err(tauri::Error::Anyhow(anyhow::anyhow!(
+                "网站不存在"
             )));
         }
 

@@ -27,6 +27,7 @@ const currentWindow = getCurrentWindow();
 let settings = null;
 let settingsOpen = false;
 let messageTimer = null;
+let shortcutRecording = false;
 
 const normalizeUrl = (raw) => {
   const value = raw.trim();
@@ -62,46 +63,53 @@ const showMessage = (text, isError = false) => {
 
 const setSettingsPanel = async (open) => {
   settingsOpen = open;
+  shortcutRecording = false;
   settingsPanel.classList.toggle('open', open);
   settingsPanel.setAttribute('aria-hidden', String(!open));
+  shortcutInput.classList.remove('recording');
 
   await invoke('set_settings_mode', { open });
 
   if (open) {
     await refreshAutostart();
-    shortcutInput.focus();
   }
 };
 
 const getFaviconCandidates = (site) => {
   try {
     const url = new URL(site.url);
+    const domain = url.hostname;
+
     return [
       `${url.origin}/favicon.ico`,
       `${url.origin}/favicon.svg`,
       `${url.origin}/favicon.png`,
+      `https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(site.url)}`,
+      `https://icons.duckduckgo.com/ip3/${domain}.ico`,
     ];
   } catch {
     return [];
   }
 };
 
-const setFavicon = (site) => {
-  const image = $('siteIcon');
-  const fallback = $('siteIconFallback');
+const firstLetter = (site) => {
+  const name = site.name?.trim() || 'AI';
+  return name.slice(0, 1).toUpperCase();
+};
+
+const loadFavicon = (site, image, fallback) => {
   const candidates = getFaviconCandidates(site);
   let index = 0;
 
-  const fallbackToText = () => {
+  const showFallback = () => {
     image.hidden = true;
     fallback.hidden = false;
-    const name = site.name?.trim() || 'AI';
-    fallback.textContent = name.length > 1 ? name.slice(0, 1).toUpperCase() : name;
+    fallback.textContent = firstLetter(site);
   };
 
   const tryNext = () => {
     if (index >= candidates.length) {
-      fallbackToText();
+      showFallback();
       return;
     }
 
@@ -109,14 +117,47 @@ const setFavicon = (site) => {
       image.hidden = false;
       fallback.hidden = true;
     };
+
     image.onerror = () => {
       index += 1;
       tryNext();
     };
+
     image.src = candidates[index++];
   };
 
+  image.hidden = true;
+  fallback.hidden = false;
+  fallback.textContent = firstLetter(site);
   tryNext();
+};
+
+const setFavicon = (site) => {
+  loadFavicon(
+    site,
+    $('siteIcon'),
+    $('siteIconFallback'),
+  );
+};
+
+const createSiteIcon = (site) => {
+  const wrap = document.createElement('div');
+  wrap.className = 'site-row-icon-wrap';
+
+  const image = document.createElement('img');
+  image.className = 'site-row-icon';
+  image.alt = '';
+  image.draggable = false;
+  image.hidden = true;
+
+  const fallback = document.createElement('span');
+  fallback.className = 'site-row-icon-fallback';
+  fallback.textContent = firstLetter(site);
+
+  wrap.append(image, fallback);
+  loadFavicon(site, image, fallback);
+
+  return wrap;
 };
 
 const renderSites = () => {
@@ -126,48 +167,66 @@ const renderSites = () => {
     const option = document.createElement('option');
     option.value = site.id;
     option.textContent = site.name;
-    option.selected = site.id === settings.selected_site_id;
     siteSelect.appendChild(option);
   }
 
-  const current = settings.sites.find((site) => site.id === settings.selected_site_id) || settings.sites[0];
-  if (current) setFavicon(current);
+  siteSelect.value = settings.selected_site_id;
+
+  const current =
+    settings.sites.find((site) => site.id === settings.selected_site_id) ||
+    settings.sites[0];
+
+  if (current) {
+    setFavicon(current);
+  }
 
   siteList.innerHTML = '';
 
   for (const site of settings.sites) {
     const row = document.createElement('div');
-
     row.className = 'site-row';
-    row.innerHTML = `
-      <div class="site-row-text">
-        <div class="site-name">${escapeHtml(site.name)}</div>
-        <div class="site-url">${escapeHtml(site.url)}</div>
-      </div>
-      ${
-        site.builtin
-          ? ''
-          : '<button class="tiny-danger" data-id="' +
-            escapeAttr(site.id) +
-            '">删除</button>'
+
+    const identity = document.createElement('div');
+    identity.className = 'site-row-identity';
+    identity.appendChild(createSiteIcon(site));
+
+    const text = document.createElement('div');
+    text.className = 'site-row-text';
+
+    const name = document.createElement('div');
+    name.className = 'site-name';
+    name.textContent = site.name;
+
+    const url = document.createElement('div');
+    url.className = 'site-url';
+    url.textContent = site.url;
+
+    text.append(name, url);
+    identity.appendChild(text);
+
+    const remove = document.createElement('button');
+    remove.className = 'tiny-danger';
+    remove.type = 'button';
+    remove.textContent = '删除';
+    remove.addEventListener('click', async () => {
+      if (settings.sites.length <= 1) {
+        showMessage('至少保留一个 AI 网站', true);
+        return;
       }
-    `;
 
-    row
-      .querySelector('.tiny-danger')
-      ?.addEventListener('click', async () => {
-        try {
-          settings = await invoke('remove_site', {
-            id: site.id,
-          });
+      try {
+        settings = await invoke('remove_site', {
+          id: site.id,
+        });
 
-          renderSites();
-          showMessage('已删除');
-        } catch (error) {
-          showMessage(String(error), true);
-        }
-      });
+        renderSites();
+        showMessage(`已删除 ${site.name}`);
+      } catch (error) {
+        showMessage(String(error), true);
+      }
+    });
 
+    row.append(identity, remove);
     siteList.appendChild(row);
   }
 };
@@ -279,15 +338,40 @@ const formatShortcutFromEvent = (event) => {
   return [...modifiers, key].join('+');
 };
 
-const saveShortcutFromKeyEvent = async (event) => {
-  if (!settingsOpen || event.repeat) {
+const startShortcutRecording = () => {
+  shortcutRecording = true;
+  shortcutInput.classList.add('recording');
+  shortcutInput.value = '请按快捷键…';
+  shortcutInput.focus();
+};
+
+shortcutInput.addEventListener('click', startShortcutRecording);
+shortcutInput.addEventListener('focus', () => {
+  if (!shortcutRecording) {
+    startShortcutRecording();
+  }
+});
+
+window.addEventListener('keydown', async (event) => {
+  if (!settingsOpen || !shortcutRecording || event.repeat) {
+    return;
+  }
+
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    event.stopPropagation();
+
+    shortcutRecording = false;
+    shortcutInput.classList.remove('recording');
+    shortcutInput.value = settings.shortcut;
     return;
   }
 
   const shortcut = formatShortcutFromEvent(event);
 
-  // 只有按到完整组合键时才截断输入。
   if (!shortcut) {
+    event.preventDefault();
+    event.stopPropagation();
     return;
   }
 
@@ -304,10 +388,12 @@ const saveShortcutFromKeyEvent = async (event) => {
   } catch (error) {
     shortcutInput.value = settings.shortcut;
     showMessage(String(error), true);
+  } finally {
+    shortcutRecording = false;
+    shortcutInput.classList.remove('recording');
+    shortcutInput.blur();
   }
-};
-
-shortcutInput.addEventListener('keydown', saveShortcutFromKeyEvent);
+}, true);
 
 siteSelect.addEventListener('change', async () => {
   try {

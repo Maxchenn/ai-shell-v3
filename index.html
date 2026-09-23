@@ -10,8 +10,8 @@
     <div id="app">
       <main id="mainView" class="main-view">
         <header class="topbar">
-          <div class="site-picker">
-            <div class="site-current-icon-wrap">
+          <div class="site-picker" aria-label="切换 AI 网站">
+            <div class="site-current-icon-wrap" title="切换 AI 网站">
               <img
                 id="siteIcon"
                 class="site-current-icon"
@@ -20,8 +20,11 @@
               />
               <span id="siteIconFallback" class="site-icon-fallback">AI</span>
             </div>
-            <select id="siteSelect" aria-label="切换 AI 网站"></select>
-            <span class="select-chevron" aria-hidden="true">⌄</span>
+            <select
+              id="siteSelect"
+              class="site-select-overlay"
+              aria-label="切换 AI 网站"
+            ></select>
           </div>
 
           <div
@@ -86,40 +89,54 @@
           class="settings"
           aria-hidden="true"
         >
-          <div class="settings-grid">
+          <div class="settings-content">
             <section class="settings-section">
-              <div class="section-title">AI 网站</div>
+              <div class="section-heading">
+                <div>
+                  <div class="section-title">AI 网站</div>
+                  <div class="section-subtitle">管理左上角可切换的网站</div>
+                </div>
+              </div>
+
               <div id="siteList" class="site-list"></div>
 
-              <div class="add-site-row">
-                <input
-                  id="newSiteName"
-                  type="text"
-                  maxlength="40"
-                  placeholder="网站名称"
-                />
-                <input
-                  id="newSiteUrl"
-                  type="text"
-                  placeholder="https://example.com"
-                />
-                <button
-                  id="addSiteButton"
-                  class="small-button"
-                  type="button"
-                >
-                  添加
-                </button>
+              <div class="add-site-card">
+                <div class="subsection-title">添加 AI 网站</div>
+                <div class="add-site-row">
+                  <input
+                    id="newSiteName"
+                    type="text"
+                    maxlength="40"
+                    placeholder="网站名称"
+                  />
+                  <input
+                    id="newSiteUrl"
+                    type="text"
+                    placeholder="https://example.com"
+                  />
+                  <button
+                    id="addSiteButton"
+                    class="small-button primary-button"
+                    type="button"
+                  >
+                    添加
+                  </button>
+                </div>
               </div>
             </section>
 
-            <section class="settings-section compact">
-              <div class="section-title">快捷键</div>
+            <section class="settings-section">
+              <div class="section-heading">
+                <div>
+                  <div class="section-title">快捷键</div>
+                  <div class="section-subtitle">点击输入框后直接按组合键</div>
+                </div>
+              </div>
 
-              <div class="setting-row">
+              <div class="setting-row shortcut-row">
                 <div>
                   <div class="setting-label">呼出 / 隐藏 AI Shell</div>
-                  <div class="setting-hint">点击输入框后直接按组合键。</div>
+                  <div class="setting-hint">例如 Ctrl + Alt + Space</div>
                 </div>
                 <input
                   id="shortcutInput"
@@ -128,15 +145,23 @@
                   readonly
                   value=""
                   aria-label="全局快捷键"
+                  title="点击后按下快捷键"
                 />
               </div>
+            </section>
 
-              <div class="section-title">启动</div>
+            <section class="settings-section">
+              <div class="section-heading">
+                <div>
+                  <div class="section-title">启动</div>
+                  <div class="section-subtitle">应用启动时自动在后台运行</div>
+                </div>
+              </div>
 
               <div class="setting-row">
                 <div>
                   <div class="setting-label">开机启动</div>
-                  <div class="setting-hint">启动后后台运行，不主动弹出窗口。</div>
+                  <div class="setting-hint">启动后不主动弹出窗口。</div>
                 </div>
                 <input
                   id="autostartToggle"
@@ -144,9 +169,9 @@
                   type="checkbox"
                 />
               </div>
-
-              <div id="settingsMessage" class="settings-message" role="status"></div>
             </section>
+
+            <div id="settingsMessage" class="settings-message" role="status"></div>
           </div>
         </section>
       </main>
